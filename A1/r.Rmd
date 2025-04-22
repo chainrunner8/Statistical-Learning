@@ -1,0 +1,13 @@
+---
+output: html_document
+---
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("mgcv")
+MH_data <- read.table("MHpredict.csv", sep = ",", header = TRUE)
+```
+
+```{r cars}
+head(MH_data)
+```
