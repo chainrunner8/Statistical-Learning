@@ -1,0 +1,25 @@
+,predictor,SVR_coef
+2,IDS,1.686
+10,disType_comorbid disorder,0.843
+11,disType_depressive disorder,0.814
+23,sample_Specialised mental health care,0.726
+5,LCImax,0.655
+22,sample_Primary care,0.405
+19,bGAD_Positive,0.337
+20,bPanic_Positive,0.303
+7,RemDis,0.222
+12,Sexe_male,0.176
+14,alcohol_No positive alcohol diagnose,0.133
+21,bAgo_Positive,0.13
+0,Age,0.127
+3,BAI,0.071
+13,pedigree_Yes,-0.0
+4,FQ,-0.087
+18,bSocPhob_Positive,-0.142
+1,aedu,-0.427
+15,bTypeDep_First onset MDD,-0.433
+9,PsychTreat,-0.524
+8,ADuse,-0.944
+17,bTypeDep_Recurrent MDD,-0.949
+6,AO,-0.986
+16,bTypeDep_No depressive disorder,-1.241
