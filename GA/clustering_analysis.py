@@ -1,6 +1,7 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.patches import Ellipse
 import numpy as np
 import pandas as pd
 from ucimlrepo import fetch_ucirepo 
@@ -14,51 +15,51 @@ from sklearn.metrics import silhouette_samples, silhouette_score, adjusted_rand_
 SEED = 4645251
 
 
-# wine_quality = fetch_ucirepo(id=186) 
-# X = wine_quality.data.features 
-# y = wine_quality.data.targets
+'''
+The reason why we don't include the target in this analysis is that we would obtain
+biased clusters that are defined by the outcome, while here our goal is to discover 
+the underlying chemical profiles that lead to high or low quality ratings.
 
-# The reason why we don't include the target in this analysis is that we would obtain
-# biased clusters that are defined by the outcome, while here our goal is to discover 
-# the underlying chemical profiles that lead to high or low quality ratings.
+You could ask why don't we just take the rows in the data set where the quality is
+excellent or poor and average out the profiles like we do in this programme.
+Clustering allows us to single out different chemical profiles and study how those
+outliers are assigned to these profiles.
 
-# You could ask why don't we just take the rows in the data set where the quality is
-# excellent or poor and average out the profiles like we do in this programme.
-# Clustering allows us to single out different chemical profiles and study how those
-# outliers are assigned to these profiles.
+So let's say we're data scientist that were hired by businessmen looking to acquire
+a wine domain and market their wine as very high quality.
+If we showed them our results after part 1, they'd go "Well that's great, you were
+able to single out 
 
-# So let's say we're data scientist that were hired by businessmen looking to acquire
-# a wine domain and market their wine as very high quality.
-# If we showed them our results after part 1, they'd go "Well that's great, you were
-# able to single out 
+What we take away from the Kmeans graph is that our data has a very complex 
+structure. There is no single cluster that contains exclusively excellent or poor
+wines, so GMM would be a good fit here.
 
-# What we take away from the Kmeans graph is that our data has a very complex 
-# structure. There is no single cluster that contains exclusively excellent or poor
-# wines, so GMM would be a good fit here.
-
-# We can try and look at the extreme quality scores (3 and 9) but there's only a few
-# samples with these scores so results would likely not be statistically significant.
-# K-means does hard cluster assignment, so GMM provides a more nuanced view.
-# Therefore GMM is an ideal choice of method to study these extreme wines.
-# With GMM we can look at extreme quality scores and their responsibilities.
+We can try and look at the extreme quality scores (3 and 9) but there's only a few
+samples with these scores so results would likely not be statistically significant.
+K-means does hard cluster assignment, so GMM provides a more nuanced view.
+Therefore GMM is an ideal choice of method to study these extreme wines.
+With GMM we can look at extreme quality scores and their responsibilities.
 
 
-# Now I have seen that there seem to be sub-clusters of excellent and terrible wines.
-# rerun the target viz Kmeans plot with the colour scale being the wine grade.
-# Now that I KNOW what these sub clusters look like, how can I single them out?
-# i know they exist based on their chemical features, now i'm just trying to
-# find their Gaussian distributions. Should I run GMM with the target?
+Now I have seen that there seem to be sub-clusters of excellent and terrible wines.
+rerun the target viz Kmeans plot with the colour scale being the wine grade.
+Now that I KNOW what these sub clusters look like, how can I single them out?
+i know they exist based on their chemical features, now i'm just trying to
+find their Gaussian distributions. Should I run GMM with the target?
 
-# only clustering on data points with extreme quality scores is not a good idea 
-# because it doesn't say anything about the probability that a new wine with a 
-# chemical profile similar to one of these clusters is actually excellent or poor. 
-# Let's say that we exclude all medium wines and find 2 clusters of excellent wines. 
-# One might indeed be an isolated island with a high percentage of excellent wines, 
-# but the other might in reality be an area of the PC space with very high density, 
-# and this second cluster of excellent one could be nested within a much more dense 
-# cluster that also contains a large amount of medium wines, and so the probability 
-# of finding an excellent wine in that chemical profile is very low.
-
+only clustering on data points with extreme quality scores is not a good idea 
+because it doesn't say anything about the probability that a new wine with a 
+chemical profile similar to one of these clusters is actually excellent or poor. 
+Let's say that we exclude all medium wines and find 2 clusters of excellent wines. 
+One might indeed be an isolated island with a high percentage of excellent wines, 
+but the other might in reality be an area of the PC space with very high density, 
+and this second cluster of excellent one could be nested within a much more dense 
+cluster that also contains a large amount of medium wines, and so the probability 
+of finding an excellent wine in that chemical profile is very low.
+'''
+# data = fetch_ucirepo(id=186) 
+# X = data.data.features 
+# y = data.data.targets
 
 data = pd.read_csv('data/wines.csv')
 data['wine_grade'] = data['quality'].apply(
@@ -277,7 +278,7 @@ def plot_kmeans_with_target(X, y, cluster_labels, cluster_centroids):
             , marker=markers[i]
             , label=f'Cluster {cluster}'
             , alpha=0.5
-            , s=15
+            , s=30
         )
     for i, c in enumerate(cluster_centroids):
         ax.scatter(c[0], c[1], marker=big_markers[i], c='white', alpha=1, s=300, edgecolor='k')
@@ -341,19 +342,17 @@ def plot_kmeans_grade_hist(cluster_labels, wine_grade):
 
 def GMM(X, y, range_n_components):
 
-    for i in range_n_components:
-        gmm = GaussianMixture(n_components=i, covariance_type='full', init_params='kmeans', n_init=50, random_state=SEED)
-        gmm.fit(X)
-        probs = gmm.predict_proba(X)
-        labels = gmm.predict(X)
+    X_extreme = X[(y == 0) | (y == 2)]
 
-        df = pd.DataFrame()
-        df['PC1'] = X[:, 0]
-        df['PC2'] = X[:, 1]
-        df['wine_grade'] = y
-        df['cluster'] = labels
+    for n_components in range_n_components:
+        gmm = GaussianMixture(n_components=n_components, covariance_type='full', init_params='kmeans', n_init=50, random_state=SEED)
+        gmm.fit(X_extreme)
+        gmm_probs = gmm.predict_proba(X)
+        gmm_means = gmm.means_
+        gmm_covs = gmm.covariances_
 
-        # PLOT:
+        # PLOT
+        # Scatter:
         fig, ax = plt.subplots(figsize=(12,8))
         grades = ['Poor', 'Medium', 'Excellent']
         grade_colours = ['#3B4CC0', '#DDDDDD', '#B40426']
@@ -366,24 +365,85 @@ def GMM(X, y, range_n_components):
                 , marker='o'
                 , label=grades[grade]
                 , alpha=0.5
-                , s=15
+                , s=150
             )
         # TODO: calculate centroids
-        for i, c in enumerate(cluster_centroids):
-            ax.scatter(c[0], c[1], marker='o', c='white', alpha=1, s=200, edgecolor='k')
-            ax.scatter(c[0], c[1], marker='$%d$'%i, alpha=1, s=50, edgecolor='k')
+        for i in range(n_components):
+            ax.scatter(gmm_means[i, 0], gmm_means[i, 1], marker='o', c='white', alpha=1, s=200, edgecolor='k')
+            ax.scatter(gmm_means[i, 0], gmm_means[i, 1], marker='$%d$'%i, alpha=1, s=50, edgecolor='k')
+
+        # Elliptical component contours
+        # colours = plt.get_cmap('Dark2', n_components)
+        colours = cm.nipy_spectral(np.arange(0, n_components) / n_components)
+        for i in range(n_components):
+            U, s, Vh = np.linalg.svd(gmm_covs[i][:2, :2])
+            angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
+            width, height = 2*np.sqrt(s)
+            for factor in [1, 2]:  # 1σ and 2σ contours
+                ell = Ellipse(xy=gmm_means[i], width=width * factor, height=height * factor, angle=angle
+                              , edgecolor=colours[i], lw=2//factor, fill=False)
+                ax.add_patch(ell)
+
         ax.set_xlabel('PC1')
         ax.set_ylabel('PC2')
-        ax.set_title('')
+        ax.set_title('GMM contours on PCA-reduced wine data')
         ax.legend()
         plt.show()
 
 
+        '''
+        rather than counting the number of extremes quality scores which is ambiguous
+        since we're doing soft clustering, we can work with the wine grade 
+        probabilities output by GaussianMixture: sum them for each wine grade
+        within each component, and then normalise them by the sum of these 3 sums
+        from the same component in order to find a probability again.
+        We do this for each component, and at the end we compare the probabilities
+        that these components have wine of grades 0 (poor) or 2 (excellent)
+        to the proportions of these two grades in the entire data set.
+
+        '''
+        components = [f'c{i}' for i in range(n_components)]
+        df_probs = pd.DataFrame(gmm_probs, columns=components)
+        df_probs['wine_grade'] = y
+
+        table = pd.DataFrame(0.0, index=range(n_components), columns=grades)
+        table.index.name = 'Component'
+        probs_grade_0 = df_probs[df_probs['wine_grade'] == 0]
+        probs_grade_1 = df_probs[df_probs['wine_grade'] == 1]
+        probs_grade_2 = df_probs[df_probs['wine_grade'] == 2]
+
+        for j in range(n_components):
+            table.iloc[j, 0] = probs_grade_0.iloc[:, j].sum()
+            table.iloc[j, 1] = probs_grade_1.iloc[:, j].sum()
+            table.iloc[j, 2] = probs_grade_2.iloc[:, j].sum()
+
+        table_normalised = table.div(table.sum(axis=1), axis=0).round(3)
+        table_normalised.index = pd.Index(components, name='Components')
+        table_normalised.to_csv(f'gmm_comp_proba_table_n={n_components}.csv')
+        print(table_normalised)
+
+        gmm_labels = gmm.predict(X)
+        df_labels = pd.DataFrame(gmm_labels, columns=['label'])
+        df_labels['wine_grade'] = y
+
+        table = pd.DataFrame(0.0, index=range(n_components), columns=grades)
+        table.index.name = 'Component'
+
+        for grade in np.unique(y):
+            label_counts = df_labels[df_labels['wine_grade'] == grade]['label'].value_counts()
+            for j in range(n_components):
+                table.iloc[j, grade] = label_counts.get(j, 0)
+
+        table_normalised = table.div(table.sum(axis=1), axis=0).round(3)
+        table_normalised['n_obs'] = table.sum(axis=1)
+        table_normalised.index = pd.Index(components, name='Components')
+        print(table_normalised)
+
 
 if __name__ == '__main__':
-    # run_KMeans(PC_scores=scores[:, :n_PC])
-    # silhouette_analysis(range_n_clusters=range_n_clusters, PC_scores=scores[:, :n_PC])
-    # kmeans_stability_analysis(X=scores[:, :n_PC], k=k, n_rep=100)
+    run_KMeans(PC_scores=scores[:, :n_PC])
+    silhouette_analysis(range_n_clusters=range_n_clusters, PC_scores=scores[:, :n_PC])
+    kmeans_stability_analysis(X=scores[:, :n_PC], k=k, n_rep=100)
 
     kmeans = KMeans(n_clusters=k, random_state=SEED, n_init=50).fit(scores[:, :n_PC])
     full_set_labels = kmeans.labels_
@@ -392,3 +452,5 @@ if __name__ == '__main__':
     plot_cluster_profiles(X_scaled, X.columns, full_set_labels, colours)
     plot_kmeans_with_target(scores[:, :2], wine_grade, full_set_labels, cluster_centroids)
     plot_kmeans_grade_hist(full_set_labels, wine_grade)
+
+    GMM(X=scores[:, :n_PC], y=wine_grade, range_n_components=[3,4,5,6, 7, 8])
